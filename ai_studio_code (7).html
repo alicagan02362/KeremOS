@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KeremOS v4.0 - Ultimate Edition</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: url('https://images.unsplash.com/photo-1579546929518-9e396f3cc809?q=80&w=2070&auto=format&fit=crop') no-repeat center center fixed; /* Daha şık bir arkaplan resmi */
+            background-size: cover;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            user-select: none;
+        }
+
+        /* Glassmorphism Efekti */
+        .glass {
+            background: rgba(255, 255, 255, 0.25);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.15);
+        }
+
+        .dark-glass {
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: white;
+        }
+
+        /* Masaüstü İkon Düzeni (Windows tarzı grid) */
+        .desktop {
+            flex-grow: 1;
+            position: relative;
+            padding: 50px 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, 100px);
+            grid-template-rows: repeat(auto-fill, 110px);
+            gap: 15px;
+            z-index: 1;
+        }
+
+        .desktop-icon {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            cursor: pointer;
+            padding: 10px;
+            border-radius: 10px;
+            transition: 0.2s;
+            color: white;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+            text-align: center;
+            font-size: 13px;
+        }
+
+        .desktop-icon:hover { background: rgba(255,255,255,0.2); }
+        .desktop-icon:active { background: rgba(255,255,255,0.3); }
+
+        .desk-icon-img {
+            font-size: 45px;
+            margin-bottom: 5px;
+            filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));
+        }
+
+        /* macOS Tarzı DOCK (Alt Bar) */
+        .dock-container {
+            position: absolute;
+            bottom: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: flex-end;
+            gap: 8px;
+            padding: 10px 15px;
+            border-radius: 25px;
+            z-index: 9999;
+            transition: all 0.3s;
+        }
+
+        .dock-item {
+            width: 55px;
+            height: 55px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            cursor: pointer;
+            border-radius: 15px;
+            transition: 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+        }
+        
+        .dock-item:hover {
+            transform: scale(1.4) translateY(-10px);
+            margin: 0 10px;
+            z-index: 100;
+        }
+
+        .dock-item.active::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            width: 5px;
+            height: 5px;
+            background: white;
+            border-radius: 50%;
+            box-shadow: 0 0 5px rgba(255,255,255,0.8);
+        }
+
+        .dock-divider { width: 1px; height: 45px; background: rgba(255,255,255,0.3); margin: 0 5px; }
+
+        /* Pencereler */
+        .window {
+            position: absolute;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+            min-width: 350px;
+            background: rgba(255,255,255,0.9);
+            transition: transform 0.2s, opacity 0.2s;
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.8);
+        }
+
+        .window.maximized {
+            top: 35px !important; /* Üst bar payı */
+            left: 0 !important;
+            width: 100% !important;
+            height: calc(100% - 110px) !important; /* Dock payı */
+            border-radius: 0;
+            z-index: 9998 !important;
+        }
+
+        .window.minimized {
+            transform: scale(0.1) translateY(1000px);
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .window-header {
+            padding: 10px 15px;
+            background: linear-gradient(to bottom, #f9f9f9, #e6e6e6);
+            border-bottom: 1px solid #ccc;
+            display: flex;
+            justify-content: flex-start;
+            align-items: center;
+            font-size: 13px;
+            font-weight: 600;
+            color: #333;
+            cursor: default;
+        }
+
+        /* Mac Tarzı Pencere Butonları (Sola dayalı) */
+        .window-controls { display: flex; gap: 8px; margin-right: 15px; }
+        .window-controls span { width: 12px; height: 12px; border-radius: 50%; cursor: pointer; border: 1px solid rgba(0,0,0,0.1);}
+        .close-btn { background: #ff5f56; }
+        .close-btn:hover { background: #e0443e; }
+        .min-btn { background: #ffbd2e; }
+        .min-btn:hover { background: #dea122; }
+        .max-btn { background: #27c93f; }
+        .max-btn:hover { background: #1aab2f; }
+
+        .window-title { flex-grow: 1; text-align: center; margin-right: 45px; pointer-events: none;}
+        .drag-area { position: absolute; top: 0; left: 0; width: 100%; height: 35px; cursor: grab; z-index: 0; }
+        .drag-area:active { cursor: grabbing; }
+
+        .window-content { padding: 0; display: flex; flex-direction: column; flex-grow: 1; height: 100%; background: #fff; overflow-y: auto;}
+
+        .hidden { display: none !important; }
+
+        /* Üst Durum Çubuğu (iPhone / Mac karması) */
+        .top-bar {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 30px;
+            background: rgba(0,0,0,0.2);
+            backdrop-filter: blur(10px);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 15px;
+            box-sizing: border-box;
+            color: white;
+            font-size: 13px;
+            font-weight: 500;
+            z-index: 10001;
+        }
+
+        .top-left { display: flex; gap: 15px; align-items: center; }
+        .top-left span { cursor: pointer; padding: 2px 8px; border-radius: 4px; }
+        .top-left span:hover { background: rgba(255,255,255,0.2); }
+        .top-right { display: flex; gap: 15px; align-items: center; }
+
+        /* Dinamik Çentik */
+        .dynamic-island {
+            position: absolute;
+            top: 5px; left: 50%; transform: translateX(-50%);
+            background: #000; color: #fff;
+            border-radius: 20px; height: 25px; width: 120px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            z-index: 10002; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow: hidden;
+        }
+
+        .dynamic-island.expanded { width: 300px; height: 140px; border-radius: 25px; align-items: flex-start; padding: 15px; box-sizing: border-box; flex-direction: column; top: 15px;}
+        .di-content-collapsed { display: flex; align-items: center; gap: 8px; font-size: 12px; transition: opacity 0.2s; }
+        .di-content-expanded { display: flex; flex-direction: column; width: 100%; height: 100%; opacity: 0; transition: opacity 0.3s; }
+        .dynamic-island.expanded .di-content-expanded { opacity: 1; }
+        
+        .di-header { display: flex; align-items: center; justify-content: space-between; width: 100%; }
+        .di-info { display: flex; flex-direction: column; flex-grow: 1; margin-left: 12px; }
+        .di-controls { font-size: 20px; display: flex; gap: 10px; }
+        .di-controls span:hover { color: #ff7eb3; }
+
+        /* Müzik Dalgaları */
+        .di-waveform { display: flex; align-items: flex-end; gap: 2px; height: 15px; margin-top:10px;}
+        .di-bar { width: 3px; background: #ff7eb3; border-radius: 2px; height: 10%; transition: 0.1s;}
+        .playing .di-bar { animation: wave 1s infinite ease-in-out; }
+        .playing .di-bar:nth-child(1) { animation-delay: 0.0s; }
+        .playing .di-bar:nth-child(2) { animation-delay: 0.2s; }
+        .playing .di-bar:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes wave { 0%, 100% { height: 20%; } 50% { height: 100%; } }
+
+        /* Uygulama İçerik Tasarımları */
+        .notepad-textarea { width: 100%; height: 100%; border: none; resize: none; padding: 15px; box-sizing: border-box; font-family: inherit; font-size: 16px; outline: none; background: #fdfdfd; }
+        .store-app { display: flex; align-items: center; justify-content: space-between; padding: 15px; border-bottom: 1px solid #eee; }
+        .install-btn { background: #007aff; color: white; border: none; padding: 6px 15px; border-radius: 15px; font-weight: bold; cursor: pointer; }
+        .install-btn.installed { background: #eee; color: #999; }
+        .calc-btn { background: #f0f0f0; border: 1px solid #ccc; font-size: 20px; border-radius: 50%; width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .calc-btn.op { background: #ff9f0a; color: white; border: none; }
+        
+        .profile-img-container { width: 150px; height: 150px; margin: 20px auto; border-radius: 50%; padding: 5px; background: linear-gradient(135deg, #a8edea, #ff7eb3); }
+        .profile-img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; border: 3px solid white; }
+
+        #startMenu { position: absolute; top: 30px; left: 10px; width: 200px; border-radius: 10px; padding: 10px; z-index: 10002; color: #333;}
+        .menu-item { padding: 8px 10px; border-radius: 5px; cursor: pointer; font-size: 14px;}
+        .menu-item:hover { background: #007aff; color: white; }
+
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+    <!-- Arka Plan Müzik -->
+    <audio id="bgMusic" loop>
+        <source src="https://cdn.pixabay.com/audio/2022/01/18/audio_d0a13f69d2.mp3" type="audio/mpeg">
+    </audio>
+
+    <!-- Üst Bar (Top Bar) -->
+    <div class="top-bar">
+        <div class="top-left">
+            <span onclick="toggleStartMenu(event)"><b>🐻 KeremOS</b></span>
+            <span onclick="openWindow('storeWindow')">Store</span>
+            <span onclick="closeAll()">Tümünü Temizle</span>
+        </div>
+        <div class="top-right">
+            <span>🔋 %100</span>
+            <span>📶 Wi-Fi</span>
+            <span id="clock">12:00</span>
+        </div>
+    </div>
+
+    <!-- Apple Menüsü -->
+    <div class="glass hidden" id="startMenu" style="background: rgba(255,255,255,0.9);">
+        <div class="menu-item" onclick="openWindow('galleryWindow')">Bu KeremOS Hakkında</div>
+        <div style="height: 1px; background: #ddd; margin: 5px 0;"></div>
+        <div class="menu-item" onclick="openWindow('storeWindow')">App Store...</div>
+        <div class="menu-item" onclick="openWindow('terminalWindow')">Terminal (Görev Yöneticisi)</div>
+        <div style="height: 1px; background: #ddd; margin: 5px 0;"></div>
+        <div class="menu-item" style="color: red;">Yeniden Başlat</div>
+        <div class="menu-item" style="color: red;">Sistemi Kapat</div>
+    </div>
+
+    <!-- Dinamik Çentik -->
+    <div class="dynamic-island" id="dynamicIsland" onclick="expandIsland(event)">
+        <div class="di-content-collapsed" id="di-collapsed">
+            <span>🎵</span><span id="di-status">Marş Hazır</span>
+        </div>
+        <div class="di-content-expanded hidden" id="di-expanded">
+            <div class="di-header">
+                <div style="font-size: 24px;">🐻</div>
+                <div class="di-info">
+                    <strong>Büyük Marş</strong>
+                    <span id="music-status">Kerem Şirketi</span>
+                </div>
+                <div class="di-controls">
+                    <span id="playPauseBtn" onclick="toggleMusic(event)">▶</span>
+                </div>
+            </div>
+            <div class="di-waveform" id="waveform">
+                <div class="di-bar"></div><div class="di-bar"></div><div class="di-bar"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Masaüstü İkonları (Windows Tipi) -->
+    <div class="desktop" id="desktop">
+        <div class="desktop-icon" ondblclick="openWindow('notepadWindow')">
+            <div class="desk-icon-img">📝</div>
+            Not Defteri
+        </div>
+        <div class="desktop-icon" ondblclick="openWindow('docsWindow')">
+            <div class="desk-icon-img">📁</div>
+            Kerem Dosyalar
+        </div>
+        <div class="desktop-icon" ondblclick="openWindow('terminalWindow')">
+            <div class="desk-icon-img">💻</div>
+            Terminal
+        </div>
+        <!-- Mağazadan inenler buraya eklenecek -->
+        <div id="newIconsArea" style="display: contents;"></div>
+    </div>
+
+    <!-- macOS Tarzı Alt Bar (Dock) -->
+    <div class="dock-container glass">
+        <div class="dock-item" onclick="openWindow('galleryWindow')" title="Hakkında" id="dock-galleryWindow">🐻</div>
+        <div class="dock-item" onclick="openWindow('storeWindow')" title="Store" id="dock-storeWindow">🛍️</div>
+        <div class="dock-item" onclick="openWindow('musicWindow')" title="Müzik" id="dock-musicWindow">🎵</div>
+        <div class="dock-item" onclick="openWindow('calcWindow')" title="Hesap Makinesi" id="dock-calcWindow">🧮</div>
+        <div class="dock-item" onclick="openWindow('notepadWindow')" title="Notlar" id="dock-notepadWindow">📝</div>
+        
+        <div class="dock-divider"></div>
+        <div class="dock-item" onclick="toggleMusic(event)" title="Hızlı Oynat" style="font-size: 25px; background: #e74c3c; color: white; border-radius: 50%; width: 40px; height: 40px; margin-bottom: 5px;" id="dockPlayBtn">▶</div>
+    </div>
+
+    <!-- Pencereler -->
+
+    <!-- 1. Not Defteri -->
+    <div class="window hidden" id="notepadWindow" style="top: 15%; left: 15%; width: 400px; height: 300px;">
+        <div class="drag-area"></div>
+        <div class="window-header">
+            <div class="window-controls">
+                <span class="close-btn" onclick="closeWindow('notepadWindow')"></span>
+                <span class="min-btn" onclick="minimizeWindow('notepadWindow')"></span>
+                <span class="max-btn" onclick="maximizeWindow('notepadWindow')"></span>
+            </div>
+            <div class="window-title">Not Defteri</div>
+        </div>
+        <div class="window-content">
+            <textarea class="notepad-textarea" placeholder="Devrim fikirlerinizi buraya yazın..."></textarea>
+        </div>
+    </div>
+
+    <!-- 2. Hesap Makinesi -->
+    <div class="window hidden" id="calcWindow" style="top: 20%; left: 60%; width: 280px; background: #222;">
+        <div class="drag-area"></div>
+        <div class="window-header" style="background: #333; border: none;">
+            <div class="window-controls">
+                <span class="close-btn" onclick="closeWindow('calcWindow')"></span>
+                <span class="min-btn" onclick="minimizeWindow('calcWindow')"></span>
+            </div>
+        </div>
+        <div class="window-content" style="background: #222; padding: 20px;">
+            <div style="color: white; font-size: 50px; text-align: right; margin-bottom: 20px;">2024</div>
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;">
+                <div class="calc-btn">7</div><div class="calc-btn">8</div><div class="calc-btn">9</div><div class="calc-btn op">÷</div>
+                <div class="calc-btn">4</div><div class="calc-btn">5</div><div class="calc-btn">6</div><div class="calc-btn op">×</div>
+                <div class="calc-btn">1</div><div class="calc-btn">2</div><div class="calc-btn">3</div><div class="calc-btn op">-</div>
+                <div class="calc-btn">0</div><div class="calc-btn">,</div><div class="calc-btn op" style="background: #e74c3c;">=</div><div class="calc-btn op">+</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. Kerem Profil -->
+    <div class="window hidden" id="galleryWindow" style="top: 10%; left: 30%; width: 350px;">
+        <div class="drag-area"></div>
+        <div class="window-header">
+            <div class="window-controls">
+                <span class="close-btn" onclick="closeWindow('galleryWindow')"></span>
+                <span class="min-btn" onclick="minimizeWindow('galleryWindow')"></span>
+            </div>
+            <div class="window-title">Hakkında</div>
+        </div>
+        <div class="window-content" style="text-align: center; padding: 20px;">
+            <div class="profile-img-container">
+                <img src="ayicik.png" alt="Kerem" class="profile-img" onerror="this.src='https://ui-avatars.com/api/?name=Kerem&background=fff&color=e74c3c&size=200&font-size=0.4'">
+            </div>
+            <h2>KeremOS Ultimate</h2>
+            <p style="color: #666;">Sürüm 4.0 (Devrim Sürümü)</p>
+            <p>Kurucu: Kerem Şirketi</p>
+            <button style="padding: 5px 15px; border-radius: 5px; border: 1px solid #ccc; background: white; cursor:pointer;" onclick="alert('Sistem Güncel!')">Yazılım Güncelleme</button>
+        </div>
+    </div>
+
+    <!-- 4. Smile Store -->
+    <div class="window hidden" id="storeWindow" style="top: 10%; left: 20%; width: 600px; height: 400px;">
+        <div class="drag-area"></div>
+        <div class="window-header">
+            <div class="window-controls">
+                <span class="close-btn" onclick="closeWindow('storeWindow')"></span>
+                <span class="min-btn" onclick="minimizeWindow('storeWindow')"></span>
+                <span class="max-btn" onclick="maximizeWindow('storeWindow')"></span>
+            </div>
+            <div class="window-title">App Store</div>
+        </div>
+        <div class="window-content" style="text-align: left;">
+            <h1 style="margin: 20px;">Keşfet</h1>
+            
+            <div class="store-app">
+                <div style="display:flex; align-items:center; gap:15px;">
+                    <div style="font-size: 40px;">🎮</div>
+                    <div><b>Kerem Oyunları</b><br><span style="color:#666; font-size:13px;">Vakit öldürmelik oyunlar.</span></div>
+                </div>
+                <button class="install-btn" id="btn-game" onclick="installApp('game', '🎮', 'Oyunlar')">İNDİR</button>
+            </div>
+
+            <div class="store-app">
+                <div style="display:flex; align-items:center; gap:15px;">
+                    <div style="font-size: 40px;">📷</div>
+                    <div><b>Kamera Pro</b><br><span style="color:#666; font-size:13px;">Anı yakala.</span></div>
+                </div>
+                <button class="install-btn" id="btn-cam" onclick="installApp('cam', '📷', 'Kamera')">İNDİR</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 5. Müzik -->
+    <div class="window hidden" id="musicWindow" style="top: 25%; left: 50%; width: 350px;">
+        <div class="drag-area"></div>
+        <div class="window-header">
+            <div class="window-controls">
+                <span class="close-btn" onclick="closeWindow('musicWindow')"></span>
+                <span class="min-btn" onclick="minimizeWindow('musicWindow')"></span>
+            </div>
+            <div class="window-title">Müzik</div>
+        </div>
+        <div class="window-content" style="text-align: center; padding: 20px;">
+            <div id="disk" style="font-size: 80px; margin: 20px 0;">💿</div>
+            <h3>Büyük Devrim Marşı</h3>
+            <p style="color: #666; font-size: 14px;">Kerem Şirketi Senfonisi</p>
+            <div style="display: flex; justify-content: center; gap: 30px; font-size: 30px; margin-top: 20px; cursor: pointer;">
+                <span>⏮</span> 
+                <span id="windowPlayBtn" onclick="toggleMusic(event)">▶</span> 
+                <span>⏭</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 6. Terminal (Görev Yöneticisi) -->
+    <div class="window hidden" id="terminalWindow" style="top: 30%; left: 40%; width: 450px; background: #000; color: #0f0; font-family: monospace;">
+        <div class="drag-area"></div>
+        <div class="window-header" style="background: #333; color: white; border: none;">
+            <div class="window-controls">
+                <span class="close-btn" onclick="closeWindow('terminalWindow')"></span>
+            </div>
+            <div class="window-title" style="color:white;">Terminal - bash</div>
+        </div>
+        <div class="window-content" style="background: #000; padding: 15px; text-align: left;">
+            <p>KeremOS v4.0 Yükleniyor...</p>
+            <p>Çekirdek (Kernel): Aktif</p>
+            <p>Yapay Zeka Modülü: Çevrimiçi</p>
+            <p>> root@kerem-os:~$ Sistem kusursuz çalışıyor_ <span style="animation: blink 1s infinite;">█</span></p>
+        </div>
+    </div>
+
+    <script>
+        let highestZIndex = 1;
+        const audio = document.getElementById('bgMusic');
+        let isPlaying = false;
+
+        // Saat Güncelleme
+        function updateTime() {
+            var now = new Date();
+            document.getElementById('clock').textContent = now.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+        }
+        setInterval(updateTime, 1000);
+        updateTime();
+
+        // Üst Menü
+        function toggleStartMenu(e) {
+            e.stopPropagation();
+            document.getElementById('startMenu').classList.toggle('hidden');
+        }
+
+        document.addEventListener('click', function(e) {
+            if(!e.target.closest('#startMenu')) document.getElementById('startMenu').classList.add('hidden');
+            if(!e.target.closest('#dynamicIsland')) document.getElementById('dynamicIsland').classList.remove('expanded');
+        });
+
+        // Çentik Büyütme
+        function expandIsland(e) {
+            e.stopPropagation();
+            if(e.target.closest('.di-controls')) return;
+            document.getElementById('dynamicIsland').classList.toggle('expanded');
+        }
+
+        // Müzik Kontrolü (Her Yerde Senkronize)
+        function toggleMusic(e) {
+            e.stopPropagation();
+            isPlaying = !isPlaying;
+            
+            const btns = [document.getElementById('playPauseBtn'), document.getElementById('windowPlayBtn'), document.getElementById('dockPlayBtn')];
+            const wave = document.getElementById('waveform');
+            const disk = document.getElementById('disk');
+            
+            if(isPlaying) {
+                audio.play();
+                btns.forEach(b => { if(b) b.textContent = '⏸'; });
+                wave.classList.add('playing');
+                disk.style.animation = 'spin 3s linear infinite';
+                document.getElementById('di-status').textContent = 'Çalıyor';
+            } else {
+                audio.pause();
+                btns.forEach(b => { if(b) b.textContent = '▶'; });
+                wave.classList.remove('playing');
+                disk.style.animation = 'none';
+                document.getElementById('di-status').textContent = 'Hazır';
+            }
+        }
+
+        // Pencere İşlemleri
+        function openWindow(id) {
+            const win = document.getElementById(id);
+            win.classList.remove('hidden', 'minimized');
+            bringToFront(win);
+            // Dock'ta aktif işareti
+            if(document.getElementById('dock-' + id)) document.getElementById('dock-' + id).classList.add('active');
+        }
+
+        function closeWindow(id) {
+            const win = document.getElementById(id);
+            win.classList.add('hidden');
+            win.classList.remove('maximized', 'minimized');
+            if(document.getElementById('dock-' + id)) document.getElementById('dock-' + id).classList.remove('active');
+        }
+
+        function minimizeWindow(id) {
+            document.getElementById(id).classList.add('minimized');
+        }
+
+        function maximizeWindow(id) {
+            document.getElementById(id).classList.toggle('maximized');
+        }
+
+        function closeAll() {
+            document.querySelectorAll('.window').forEach(w => closeWindow(w.id));
+        }
+
+        function bringToFront(element) {
+            highestZIndex++;
+            element.style.zIndex = highestZIndex;
+        }
+
+        // Sürükleme Mantığı (Sadece drag-area kısmından tutulunca)
+        document.querySelectorAll('.window').forEach(win => {
+            win.addEventListener('mousedown', function() { bringToFront(this); });
+            const header = win.querySelector('.drag-area');
+            let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+            
+            if(header) {
+                header.onmousedown = function(e) {
+                    if(win.classList.contains('maximized')) return;
+                    e.preventDefault();
+                    pos3 = e.clientX; pos4 = e.clientY;
+                    document.onmouseup = () => { document.onmouseup = null; document.onmousemove = null; };
+                    document.onmousemove = function(e) {
+                        e.preventDefault();
+                        pos1 = pos3 - e.clientX; pos2 = pos4 - e.clientY;
+                        pos3 = e.clientX; pos4 = e.clientY;
+                        win.style.top = (win.offsetTop - pos2) + "px";
+                        win.style.left = (win.offsetLeft - pos1) + "px";
+                    };
+                };
+            }
+        });
+
+        // Uygulama İndirme
+        function installApp(id, icon, name) {
+            const btn = document.getElementById('btn-' + id);
+            if(btn.classList.contains('installed')) return;
+            btn.textContent = 'YÜKLENİYOR...';
+            
+            setTimeout(() => {
+                btn.textContent = 'AÇ';
+                btn.classList.add('installed');
+                
+                // Masaüstüne ekle
+                const newIcon = document.createElement('div');
+                newIcon.className = 'desktop-icon';
+                newIcon.innerHTML = `<div class="desk-icon-img">${icon}</div>${name}`;
+                newIcon.ondblclick = () => alert(name + " açılıyor...");
+                document.getElementById('newIconsArea').appendChild(newIcon);
+
+                // Dock'a ekle
+                const newDockIcon = document.createElement('div');
+                newDockIcon.className = 'dock-item';
+                newDockIcon.innerHTML = icon;
+                newDockIcon.title = name;
+                newDockIcon.onclick = () => alert(name + " açılıyor...");
+                
+                const divider = document.querySelector('.dock-divider');
+                divider.parentNode.insertBefore(newDockIcon, divider);
+
+                // Çentik Bildirimi
+                const island = document.getElementById('dynamicIsland');
+                island.classList.remove('expanded');
+                document.getElementById('di-status').textContent = name + ' Yüklendi!';
+                setTimeout(() => { document.getElementById('di-status').textContent = isPlaying ? 'Çalıyor' : 'Hazır'; }, 3000);
+            }, 1500);
+        }
+
+    </script>
+    <style>
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+    </style>
+</body>
+</html>
